@@ -1,0 +1,2803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logr — Security Log Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neutral-50: #fafafa;
+            --neutral-100: #f5f5f5;
+            --neutral-200: #e5e5e5;
+            --neutral-300: #d4d4d4;
+            --neutral-400: #a3a3a3;
+            --neutral-500: #737373;
+            --neutral-600: #525252;
+            --neutral-700: #404040;
+            --neutral-750: #2d2d2d;
+            --neutral-800: #1a1a1a;
+            --neutral-900: #111;
+            --neutral-950: #0a0a0a;
+            
+            --cyan-400: #22d3ee;
+            --cyan-500: #06b6d4;
+            --cyan-600: #0891b2;
+            
+            --purple-400: #c084fc;
+            --purple-500: #a855f7;
+            --purple-600: #9333ea;
+            --purple-700: #7e22ce;
+            --purple-950: #3b0764;
+            
+            --red-400: #f87171;
+            --red-500: #ef4444;
+            --orange-400: #fb923c;
+            --yellow-400: #facc15;
+            --green-400: #4ade80;
+            --green-500: #22c55e;
+
+            --border: #1e1e1e;
+            --surface: #151515;
+            --surface-raised: #191919;
+            --radius: 8px;
+            --transition: 0.15s ease;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.011em;
+        }
+
+        /* Header */
+        .header {
+            padding: 0 2rem;
+            height: 52px;
+            border-bottom: 1px solid var(--border);
+            background: #0a0a0a;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--cyan-500);
+        }
+
+        .logr-mark {
+            width: 28px;
+            height: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .logr-mark svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-link {
+            color: var(--neutral-500);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            transition: color var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: #fff;
+        }
+
+        .help-button {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--neutral-500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 0.875rem;
+        }
+
+        .help-button:hover {
+            color: #fff;
+            border-color: var(--neutral-700);
+        }
+
+        /* Landing Page */
+        .landing-page {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .landing-content {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 4rem 2rem 5rem;
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .landing-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .landing-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #fff;
+            letter-spacing: -0.03em;
+        }
+
+        .landing-header p {
+            font-size: 0.9375rem;
+            color: var(--neutral-500);
+            max-width: 480px;
+            line-height: 1.6;
+        }
+
+        .mode-selection-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .mode-selection-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--cyan-500);
+            border-radius: var(--radius);
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .mode-selection-card::before { display: none; }
+
+        .mode-selection-card.advanced-mode {
+            background: var(--surface);
+            border-color: var(--border);
+            border-left-color: var(--purple-500);
+        }
+
+        .mode-selection-card:hover {
+            background: var(--surface-raised);
+        }
+
+        .mode-selection-card.advanced-mode:hover {
+            background: var(--surface-raised);
+        }
+
+        .mode-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .mode-card-title {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+        }
+
+        .mode-icon {
+            display: none;
+        }
+
+        .mode-card-title h2 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .mode-card-arrow {
+            color: var(--neutral-600);
+            font-size: 1rem;
+            transition: transform var(--transition);
+        }
+
+        .advanced-mode .mode-card-arrow {
+            color: var(--neutral-600);
+        }
+
+        .mode-selection-card:hover .mode-card-arrow {
+            transform: translateX(3px);
+            color: var(--neutral-400);
+        }
+
+        .mode-card-description {
+            color: var(--neutral-500);
+            font-size: 0.8125rem;
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+
+        .mode-features {
+            display: none;
+        }
+
+        .mode-card-footer {
+            display: none;
+        }
+
+        .landing-footer {
+            color: var(--neutral-600);
+            font-size: 0.75rem;
+            margin-top: 2rem;
+        }
+
+        /* Global Footer */
+        .global-footer {
+            background: #0a0a0a;
+            border-top: 1px solid var(--border);
+            padding: 2rem 0 1.5rem;
+            margin-top: auto;
+            width: 100%;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-brand {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .footer-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--neutral-100);
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .footer-logo svg {
+            width: 28px;
+            height: 28px;
+            color: var(--cyan-400);
+        }
+
+        .footer-description {
+            color: var(--neutral-400);
+            font-size: 0.875rem;
+            line-height: 1.6;
+            max-width: 400px;
+        }
+
+        .footer-social {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .footer-social h4 {
+            color: var(--neutral-100);
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--neutral-400);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            transition: all var(--transition);
+        }
+
+        .social-link:hover {
+            color: #fff;
+            border-color: var(--neutral-700);
+        }
+
+        .social-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .footer-bottom {
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--neutral-800);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-copyright {
+            color: var(--neutral-500);
+            font-size: 0.875rem;
+        }
+
+        .footer-trademark {
+            color: var(--neutral-600);
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .social-links {
+                flex-direction: column;
+            }
+        }
+
+        /* Simple Mode Page */
+        .simple-mode-page {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .simple-container {
+            max-width: 100%;
+            padding: 2rem 3rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 1.375rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: var(--cyan-500);
+            font-size: 0.9375rem;
+            font-weight: 500;
+        }
+
+        .section-header svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .log-textarea {
+            width: 100%;
+            min-height: 280px;
+            background: #0e0e0e;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.875rem 1rem;
+            color: var(--neutral-300);
+            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.7;
+            resize: vertical;
+            transition: border-color var(--transition);
+        }
+
+        .log-textarea:focus {
+            outline: none;
+            border-color: var(--neutral-600);
+        }
+
+        .log-textarea::placeholder {
+            color: var(--neutral-700);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #0a0a0a;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #e5e5e5;
+        }
+
+        .btn-primary:disabled {
+            background: var(--neutral-800);
+            color: var(--neutral-600);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--neutral-400);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            color: #fff;
+            border-color: var(--neutral-700);
+        }
+
+        /* Advanced Mode Page */
+        .advanced-mode-page {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .advanced-container {
+            max-width: 100%;
+            padding: 2rem 3rem;
+        }
+
+        .analysis-engine-section {
+            margin-bottom: 3rem;
+        }
+
+        .analysis-engine-header {
+            margin-bottom: 2rem;
+        }
+
+        .analysis-engine-header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .analysis-engine-header p {
+            color: var(--neutral-400);
+            font-size: 0.9375rem;
+        }
+
+        .engine-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+        }
+
+        .engine-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+
+        .engine-card.ai-powered {
+            background: var(--surface);
+            border-color: var(--border);
+        }
+
+        .engine-card:hover {
+            background: var(--surface-raised);
+        }
+
+        .engine-card.ai-powered:hover {
+            background: var(--surface-raised);
+        }
+
+        .engine-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .engine-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .ai-powered .engine-icon {
+            background: var(--surface-raised);
+        }
+
+        .engine-title h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .engine-subtitle {
+            font-size: 0.875rem;
+            color: var(--neutral-500);
+        }
+
+        .engine-description {
+            color: var(--neutral-400);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .engine-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .engine-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .engine-features li strong {
+            color: var(--neutral-300);
+            font-weight: 500;
+        }
+
+        .engine-features li span {
+            color: var(--neutral-500);
+        }
+
+        .engine-features li::before {
+            content: '•';
+            color: var(--cyan-500);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .ai-powered .engine-features li::before {
+            color: var(--purple-500);
+        }
+
+        .engine-button {
+            width: 100%;
+            padding: 0.5rem 1rem;
+            background: #fff;
+            border: none;
+            color: #0a0a0a;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            margin-bottom: 1rem;
+            font-family: inherit;
+        }
+
+        .engine-button:hover {
+            background: #e5e5e5;
+        }
+
+        .ai-powered .engine-button {
+            background: #fff;
+            color: #0a0a0a;
+        }
+
+        .ai-powered .engine-button:hover {
+            background: #e5e5e5;
+        }
+
+        .engine-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--neutral-800);
+            font-size: 0.8125rem;
+        }
+
+        .ai-powered .engine-footer {
+            border-top-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .engine-footer-label {
+            color: var(--neutral-500);
+        }
+
+        .engine-footer-value {
+            color: var(--cyan-500);
+            font-weight: 500;
+        }
+
+        .ai-powered .engine-footer-value {
+            color: var(--purple-500);
+        }
+
+        .help-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .help-section h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: var(--cyan-500);
+            margin-bottom: 0.75rem;
+        }
+
+        .help-section p {
+            font-size: 0.875rem;
+            color: var(--neutral-400);
+            line-height: 1.6;
+        }
+
+        .help-section a {
+            color: var(--cyan-500);
+            text-decoration: none;
+        }
+
+        .help-section a:hover {
+            text-decoration: underline;
+        }
+
+        /* AI Dashboard Page */
+        .ai-dashboard-page {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .ai-dashboard-container {
+            max-width: 100%;
+            padding: 2rem 3rem;
+        }
+
+        .dashboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .dashboard-title h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .ai-badge {
+            background: var(--surface-raised);
+            color: var(--purple-400);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            border: 1px solid var(--border);
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .provider-selector-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .provider-dropdown {
+            min-width: 200px;
+            padding: 0.5rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--neutral-300);
+            font-size: 0.8125rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color var(--transition);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23737373'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+            padding-right: 2.5rem;
+        }
+
+        .provider-dropdown:hover {
+            border-color: var(--neutral-600);
+        }
+
+        .provider-dropdown:focus {
+            outline: none;
+            border-color: var(--neutral-500);
+        }
+
+        .upload-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+            border: 1px dashed var(--neutral-700);
+            border-radius: var(--radius);
+            padding: 2.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all var(--transition);
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: var(--neutral-500);
+            background: var(--surface-raised);
+        }
+
+        .upload-area.drag-over {
+            border-color: #fff;
+            background: var(--surface-raised);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-text h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text p {
+            color: var(--neutral-500);
+            font-size: 0.875rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Loading State */
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 5rem 2rem;
+        }
+
+        .loading-spinner {
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--border);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            margin: 0 auto 1.25rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-state h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.375rem;
+            letter-spacing: -0.02em;
+        }
+
+        .loading-state p {
+            color: var(--neutral-500);
+            font-size: 0.875rem;
+        }
+
+        /* Results Display */
+        .results-section {
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+        }
+
+        .result-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .result-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .result-card-header h3 {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .result-content {
+            color: var(--neutral-300);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .mode-selection-grid,
+            .engine-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .landing-header h1 { font-size: 1.75rem; }
+            .landing-content,
+            .simple-container,
+            .advanced-container,
+            .ai-dashboard-container {
+                padding: 1.5rem 1rem;
+            }
+
+            .header {
+                padding: 0.75rem 1.25rem;
+            }
+
+            .mode-selection-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .engine-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .results-grid .result-card[style*="grid-column"] {
+                grid-column: auto;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        /* Navigation Menu */
+        .menu-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--neutral-500);
+            cursor: pointer;
+            padding: 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+        .menu-btn:hover {
+            color: #fff;
+            border-color: var(--neutral-700);
+        }
+        .nav-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9998;
+        }
+        .nav-overlay.open { display: block; }
+        .nav-panel {
+            position: fixed;
+            top: 0; left: -280px;
+            width: 260px; height: 100%;
+            background: #0e0e0e;
+            border-right: 1px solid var(--border);
+            z-index: 9999;
+            transition: left 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .nav-panel.open { left: 0; }
+        .nav-panel-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--neutral-800);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-panel-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #fff;
+        }
+        .nav-close-btn {
+            background: none; border: none;
+            color: var(--neutral-500);
+            font-size: 1.25rem; cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .nav-close-btn:hover { color: #fff; background: var(--neutral-800); }
+        .nav-section-label {
+            padding: 0.75rem 1.5rem 0.375rem;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--neutral-600);
+            font-weight: 600;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--neutral-400);
+            font-size: 0.875rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            transition: all var(--transition);
+            font-family: inherit;
+            border-radius: 0;
+        }
+        .nav-item:hover { background: var(--surface-raised); color: #fff; }
+        .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .nav-item-badge {
+            margin-left: auto;
+            background: var(--cyan-500);
+            color: #000;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 0.125rem 0.5rem;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+        }
+        .nav-divider { height: 1px; background: var(--neutral-800); margin: 0.5rem 1.5rem; }
+        .nav-item.disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+        .nav-panel-footer {
+            margin-top: auto;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--neutral-800);
+            font-size: 0.75rem;
+            color: var(--neutral-600);
+        }
+
+        /* History Page */
+        .history-page {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+        .history-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+        }
+        .history-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            gap: 1rem;
+        }
+        .history-toolbar h1 { font-size: 1.375rem; font-weight: 600; }
+        .history-count { color: var(--neutral-500); font-size: 0.875rem; font-weight: 400; }
+        .btn-danger-outline {
+            background: none;
+            border: 1px solid rgba(248,113,113,0.3);
+            color: var(--red-400);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-danger-outline:hover { background: rgba(248,113,113,0.1); border-color: var(--red-400); }
+        .history-empty {
+            text-align: center;
+            padding: 5rem 2rem;
+            color: var(--neutral-500);
+        }
+        .history-empty svg { width: 56px; height: 56px; margin-bottom: 1.25rem; opacity: 0.25; }
+        .history-empty h2 { color: var(--neutral-400); margin-bottom: 0.5rem; font-size: 1.125rem; font-weight: 500; }
+        .history-empty p { font-size: 0.875rem; max-width: 380px; margin: 0 auto; line-height: 1.6; }
+        .history-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .history-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: background var(--transition);
+        }
+        .history-card:hover {
+            background: var(--surface-raised);
+        }
+        .history-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.625rem;
+        }
+        .history-card-left { display: flex; align-items: center; gap: 0.625rem; }
+        .history-mode-badge {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .history-mode-badge.simple { background: rgba(34,211,238,0.1); color: var(--cyan-400); border: 1px solid rgba(34,211,238,0.2); }
+        .history-mode-badge.standard { background: rgba(74,222,128,0.1); color: var(--green-400); border: 1px solid rgba(74,222,128,0.2); }
+        .history-mode-badge.ai { background: rgba(192,132,252,0.1); color: var(--purple-400); border: 1px solid rgba(192,132,252,0.2); }
+        .history-card-time { font-size: 0.75rem; color: var(--neutral-600); }
+        .history-card-summary {
+            color: var(--neutral-300);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 0.625rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .history-card-stats {
+            display: flex;
+            gap: 1.25rem;
+            font-size: 0.75rem;
+            color: var(--neutral-500);
+        }
+        .history-card-stats span { display: flex; align-items: center; gap: 0.25rem; }
+        .history-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--neutral-800);
+        }
+        .history-card-actions button {
+            background: var(--neutral-800);
+            border: 1px solid var(--neutral-700);
+            color: var(--neutral-300);
+            padding: 0.375rem 0.75rem;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .history-card-actions button:hover { border-color: var(--neutral-600); color: #fff; }
+        .history-card-actions button.delete-entry { color: var(--red-400); border-color: rgba(248,113,113,0.2); }
+        .history-card-actions button.delete-entry:hover { background: rgba(248,113,113,0.1); border-color: var(--red-400); }
+
+        /* History Detail Modal */
+        .history-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        .history-detail-content {
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            max-width: 900px;
+            width: 100%;
+            padding: 1.5rem;
+            position: relative;
+            margin-top: 2rem;
+        }
+        .history-detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--neutral-800);
+        }
+    </style>
+</head>
+<body>
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>Logr</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <button class="help-button" onclick="showHelp()">?</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="landing-content">
+            <div class="landing-header">
+                <h1>Choose Your Analysis Mode</h1>
+                <p>Select the analysis mode that best fits your needs. Simple mode for quick log analysis, or Advanced mode for comprehensive threat detection with AI capabilities.</p>
+            </div>
+
+            <div class="mode-selection-grid">
+                <!-- Simple Mode Card -->
+                <div class="mode-selection-card simple-mode" onclick="showSimpleMode()">
+                    <div class="mode-card-header">
+                        <div class="mode-card-title">
+                            <div class="mode-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
+                            <div>
+                                <h2>Simple Mode</h2>
+                            </div>
+                        </div>
+                        <div class="mode-card-arrow">→</div>
+                    </div>
+                    <p class="mode-card-description">Quick and straightforward log analysis with essential threat detection and visual insights. Perfect for rapid security assessments.</p>
+                    <ul class="mode-features">
+                        <li>Paste and analyze logs instantly</li>
+                        <li>Generate sample logs</li>
+                        <li>Simplified visual reports</li>
+                    </ul>
+                    <div class="mode-card-footer">Best for quick assessments</div>
+                </div>
+
+                <!-- Advanced Mode Card -->
+                <div class="mode-selection-card advanced-mode" onclick="showAdvancedMode()">
+                    <div class="mode-card-header">
+                        <div class="mode-card-title">
+                            <div class="mode-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:24px;height:24px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg></div>
+                            <div>
+                                <h2>Advanced Mode</h2>
+                            </div>
+                        </div>
+                        <div class="mode-card-arrow">→</div>
+                    </div>
+                    <p class="mode-card-description">Comprehensive security dashboard with full threat intelligence, IP analysis, and optional AI-powered insights.</p>
+                    <ul class="mode-features">
+                        <li>Full SOC dashboard</li>
+                        <li>AI analysis option</li>
+                        <li>Detailed reporting</li>
+                    </ul>
+                    <div class="mode-card-footer">Best for comprehensive analysis</div>
+                </div>
+            </div>
+
+            <div class="landing-footer">
+                Enterprise Security Platform • Real-time Threat Detection • SOC Ready
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Mode Page -->
+    <div id="simple-mode-page" class="simple-mode-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>Simple Log Analysis</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <button class="btn btn-secondary" onclick="showExportModal('simple')" style="margin-right: 1rem;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Export</button>
+                    <a href="#" class="back-link" onclick="showLandingPage(); return false;">Back to Home</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="simple-container">
+            <div class="page-header">
+                <h1 class="page-title">Log Input</h1>
+            </div>
+
+            <div class="section-card">
+                <div class="section-header">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Log Input</span>
+                </div>
+                <textarea 
+                    id="simple-logs-textarea" 
+                    class="log-textarea" 
+                    placeholder="Paste your log files here for analysis..."
+                    oninput="updateSimpleAnalyzeButton()"
+                ></textarea>
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="loadExampleLogs()">Generate Sample Logs</button>
+                    <button id="simple-analyze-btn" class="btn btn-primary" onclick="analyzeSimpleLogs()" disabled>Analyze Logs</button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="simple-loading" class="loading-state">
+                <div class="loading-spinner"></div>
+                <h2>Analyzing Your Logs...</h2>
+                <p>Our AI is examining your logs for security threats</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="simple-results" class="results-section">
+                <div class="results-grid">
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(34, 211, 238, 0.1); color: var(--cyan-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg></div>
+                            <h3>Summary</h3>
+                        </div>
+                        <div id="summary-content" class="result-content">
+                            Analysis results will appear here...
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(251, 146, 60, 0.1); color: var(--orange-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg></div>
+                            <h3>Risk Score</h3>
+                        </div>
+                        <div id="risk-score-display" class="result-content">
+                            <div style="font-size: 2.5rem; font-weight: 600; color: var(--green-400);">0.0</div>
+                            <div style="color: var(--neutral-500); margin-top: 0.5rem;">Low Risk</div>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(248, 113, 113, 0.1); color: var(--red-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg></div>
+                            <h3>Threats Detected</h3>
+                        </div>
+                        <div id="threats-content" class="result-content">
+                            No threats detected
+                        </div>
+                    </div>
+
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(74, 222, 128, 0.1); color: var(--green-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.384-3.19a.5.5 0 00-.497.006l-2.19 1.3a.5.5 0 00-.191.67l1.844 3.187a.5.5 0 00.399.258l2.579.136a.5.5 0 00.368-.152l3.071-3.071a.5.5 0 00-.148-.844zM21.75 12a9.75 9.75 0 11-19.5 0 9.75 9.75 0 0119.5 0z"/></svg></div>
+                            <h3>Recommended Actions</h3>
+                        </div>
+                        <div id="recommendations-content" class="result-content">
+                            No actions needed
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Mode Page -->
+    <div id="advanced-mode-page" class="advanced-mode-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>Advanced Analysis</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <a href="#" class="back-link" onclick="showLandingPage(); return false;">← Back</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="advanced-container">
+            <div class="analysis-engine-section">
+                <div class="analysis-engine-header">
+                    <h1>Select Analysis Engine</h1>
+                    <p>Choose between traditional pattern-based analysis or leverage AI for deeper insights and contextual threat intelligence.</p>
+                </div>
+
+                <div class="engine-grid">
+                    <!-- Standard Analysis -->
+                    <div class="engine-card" onclick="launchStandardAnalysis()">
+                        <div class="engine-header">
+                            <div class="engine-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:28px;height:28px;color:var(--cyan-400);"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg></div>
+                            <div class="engine-title">
+                                <h3>Standard Analysis</h3>
+                                <div class="engine-subtitle">Traditional threat detection</div>
+                            </div>
+                        </div>
+                        <p class="engine-description">Comprehensive log analysis powered by pattern matching algorithms, signature-based threat detection, and real-time IP reputation checks. Delivers fast, reliable results for standard security operations.</p>
+                        <ul class="engine-features">
+                            <li><strong>Real-time Threat Detection</strong> <span>Instant identification of known attack patterns</span></li>
+                            <li><strong>IP Reputation Analysis</strong> <span>Cross-reference suspicious IPs with threat databases</span></li>
+                            <li><strong>Parsing Statistics</strong> <span>Detailed breakdown of log formats and errors</span></li>
+                            <li><strong>Fast Processing</strong> <span>Optimized for high-volume log analysis</span></li>
+                        </ul>
+                        <button class="engine-button" onclick="event.stopPropagation(); launchStandardAnalysis();">Launch Standard Analysis →</button>
+                        <div class="engine-footer">
+                            <span class="engine-footer-label">Processing Speed</span>
+                            <span class="engine-footer-value">Instant</span>
+                        </div>
+                    </div>
+
+                    <!-- AI-Powered Analysis -->
+                    <div class="engine-card ai-powered" onclick="launchAIAnalysis()">
+                        <div class="engine-header">
+                            <div class="engine-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:28px;height:28px;color:var(--purple-400);"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg></div>
+                            <div class="engine-title">
+                                <h3>AI-Powered Analysis</h3>
+                                <div class="engine-subtitle">Advanced threat intelligence</div>
+                            </div>
+                        </div>
+                        <p class="engine-description">Leverage large language models for sophisticated pattern recognition, contextual threat analysis, and natural language explanations. Ideal for complex security investigations and anomaly detection.</p>
+                        <ul class="engine-features">
+                            <li><strong>Advanced Pattern Recognition</strong> <span>Detect zero-day threats and anomalies</span></li>
+                            <li><strong>Contextual Intelligence</strong> <span>Understand relationships between security events</span></li>
+                            <li><strong>Natural Language Reports</strong> <span>Human-readable threat explanations</span></li>
+                            <li><strong>Multi-Model Support</strong> <span>Choose from multiple LLM providers</span></li>
+                        </ul>
+                        <button class="engine-button">Launch AI Analysis →</button>
+                        <div class="engine-footer">
+                            <span class="engine-footer-label">Processing Speed</span>
+                            <span class="engine-footer-value">AI-Enhanced</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-section">
+                    <h3>Not sure which to choose?</h3>
+                    <p>Start with <strong>Standard Analysis</strong> for routine security monitoring and known threat detection. Use <strong>AI-Powered Analysis</strong> when investigating complex incidents, analyzing sophisticated attack patterns, or requiring detailed explanations of security events.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Dashboard Page -->
+    <div id="ai-dashboard-page" class="ai-dashboard-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>AI-Powered Analysis</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <a href="#" class="back-link" onclick="showAdvancedMode(); return false;">← Back</a>
+                    <a href="#" class="back-link" onclick="showLandingPage(); return false;">Home</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="ai-dashboard-container">
+            <div class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>AI-Powered Analysis Dashboard <span class="ai-badge">AI</span></h1>
+                </div>
+                <div class="provider-selector-header">
+                    <select id="llm-provider-dropdown" class="provider-dropdown" onchange="handleProviderChange()">
+                        <option value="groq" selected>Groq (Llama 3.3) ✓</option>
+                        <option value="gemini">Gemini (Google) ✓</option>
+                        <option value="openai" disabled style="color: var(--neutral-600);">GPT-4 (OpenAI) - Not Configured</option>
+                        <option value="anthropic" disabled style="color: var(--neutral-600);">Claude (Anthropic) - Not Configured</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="showExportModal('ai')" style="margin-left: 1rem;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Export Report</button>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                    <div class="upload-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:48px;height:48px;color:var(--neutral-500);"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div>
+                    <div class="upload-text">
+                        <h3>Upload Log File</h3>
+                        <p>Click to browse or drag and drop your log files here</p>
+                    </div>
+                    <input type="file" id="file-input" class="file-input" accept=".log,.txt" onchange="handleFileUpload(event)">
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="ai-loading" class="loading-state">
+                <div class="loading-spinner"></div>
+                <h2>AI Analysis in Progress...</h2>
+                <p>Processing your logs with advanced threat intelligence</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="ai-results" class="results-section">
+                <div class="results-grid">
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(168, 85, 247, 0.1); color: var(--purple-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg></div>
+                            <h3>AI Analysis Summary</h3>
+                        </div>
+                        <div id="ai-summary-content" class="result-content">
+                            Upload a log file to begin AI-powered analysis...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Standard Analysis Page -->
+    <div id="standard-analysis-page" class="ai-dashboard-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>Standard Analysis</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <button class="btn btn-secondary" onclick="showExportModal('standard')" style="margin-right: 1rem;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg> Export</button>
+                    <a href="#" class="back-link" onclick="showAdvancedMode(); return false;">← Back</a>
+                    <a href="#" class="back-link" onclick="showLandingPage(); return false;">Home</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="ai-dashboard-container">
+            <div class="dashboard-header">
+                <div class="dashboard-title">
+                    <h1>Standard Analysis Dashboard</h1>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-area" onclick="document.getElementById('standard-file-input').click()">
+                    <div class="upload-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:48px;height:48px;color:var(--neutral-500);"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg></div>
+                    <div class="upload-text">
+                        <h3>Upload Log File</h3>
+                        <p>Click to browse or drag and drop your log files here</p>
+                        <span style="font-size: 0.875rem; color: var(--neutral-500);">Supports Apache, Nginx, and common log formats</span>
+                    </div>
+                </div>
+                <input type="file" id="standard-file-input" accept=".log,.txt" onchange="handleStandardFileUpload(event)" style="display: none;">
+            </div>
+
+            <!-- Loading State -->
+            <div id="standard-loading" class="loading-state">
+                <div class="loading-spinner"></div>
+                <h2>Analyzing Your Logs...</h2>
+                <p>Running pattern-based threat detection</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="standard-results" class="results-section">
+                <div class="results-grid">
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <div class="result-card-header">
+                            <div class="result-icon" style="background: rgba(34, 211, 238, 0.1); color: var(--cyan-400);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg></div>
+                            <h3>Analysis Results</h3>
+                        </div>
+                        <div id="standard-summary-content" class="result-content">
+                            Upload a log file to begin standard analysis...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Panel -->
+    <div id="nav-overlay" class="nav-overlay" onclick="closeNav()"></div>
+    <div id="nav-panel" class="nav-panel">
+        <div class="nav-panel-header">
+            <div class="nav-panel-title">
+                <div class="logr-mark" style="width:28px;height:28px;border-radius:7px;"><svg viewBox="0 0 28 28" fill="none" style="width:18px;height:18px;"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                <span>Logr</span>
+            </div>
+            <button class="nav-close-btn" onclick="closeNav()">&times;</button>
+        </div>
+        <div class="nav-section-label">Navigation</div>
+        <button class="nav-item" onclick="closeNav(); showLandingPage();">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
+            Home
+        </button>
+        <button class="nav-item" onclick="closeNav(); showHistoryPage();">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Previous Analysis
+            <span id="nav-history-badge" class="nav-item-badge" style="display:none;">0</span>
+        </button>
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">Analysis Modes</div>
+        <button class="nav-item" onclick="closeNav(); showSimpleMode();">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+            Simple Mode
+        </button>
+        <button class="nav-item" onclick="closeNav(); showAdvancedMode();">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+            Advanced Mode
+        </button>
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">Coming Soon</div>
+        <button class="nav-item disabled">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Settings
+        </button>
+        <button class="nav-item disabled">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+            User Accounts
+        </button>
+        <div class="nav-panel-footer">Logr v1.0.0</div>
+    </div>
+
+    <!-- History Page -->
+    <div id="history-page" class="history-page">
+        <div class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                    <span>Previous Analysis</span>
+                </div>
+                <div class="header-actions">
+                    <button class="menu-btn" onclick="toggleNav()" title="Menu"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                    <a href="#" class="back-link" onclick="showLandingPage(); return false;">Back to Home</a>
+                </div>
+            </div>
+        </div>
+        <div class="history-container">
+            <div class="history-toolbar">
+                <h1>Analysis History <span class="history-count" id="history-count-label"></span></h1>
+                <button class="btn-danger-outline" id="clear-history-btn" onclick="clearHistory()" style="display:none;">Clear All</button>
+            </div>
+            <div id="history-list-container"></div>
+        </div>
+    </div>
+
+    <!-- History Detail Modal -->
+    <div id="history-detail-modal" class="history-detail-modal" onclick="if(event.target===this)closeHistoryDetail()">
+        <div class="history-detail-content">
+            <div class="history-detail-header">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <span id="detail-mode-badge" class="history-mode-badge"></span>
+                    <span id="detail-timestamp" style="font-size:0.875rem;color:var(--neutral-400);"></span>
+                </div>
+                <button onclick="closeHistoryDetail()" style="background:none;border:none;color:var(--neutral-400);font-size:1.5rem;cursor:pointer;padding:0.25rem 0.5rem;">&times;</button>
+            </div>
+            <div id="detail-body"></div>
+        </div>
+    </div>
+
+    <!-- Export Format Modal -->
+    <div id="export-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--neutral-900); border: 1px solid var(--neutral-700); border-radius: 0.75rem; max-width: 500px; padding: 2rem; position: relative;">
+            <button onclick="closeExportModal()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--neutral-400); font-size: 1.5rem; cursor: pointer; padding: 0.5rem;">&times;</button>
+            <h2 style="color: var(--cyan-400); margin-bottom: 1rem;">Export Report</h2>
+            <p style="color: var(--neutral-300); margin-bottom: 1.5rem; font-size: 0.875rem;">Choose your preferred export format:</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <button onclick="exportAs('json')" style="padding: 1rem; background: var(--neutral-800); border: 1px solid var(--neutral-700); border-radius: 0.5rem; color: var(--neutral-100); cursor: pointer; text-align: left; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cyan-500)'" onmouseout="this.style.borderColor='var(--neutral-700)'">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:24px;height:24px;color:var(--cyan-400);"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">JSON Format</div>
+                            <div style="font-size: 0.75rem; color: var(--neutral-400);">Complete data structure, ideal for integration</div>
+                        </div>
+                    </div>
+                </button>
+                
+                <button onclick="exportAs('csv')" style="padding: 1rem; background: var(--neutral-800); border: 1px solid var(--neutral-700); border-radius: 0.5rem; color: var(--neutral-100); cursor: pointer; text-align: left; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cyan-500)'" onmouseout="this.style.borderColor='var(--neutral-700)'">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:24px;height:24px;color:var(--cyan-400);"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12c-.621 0-1.125.504-1.125 1.125M12 12c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m0-2.625c0 .621.504 1.125 1.125 1.125"/></svg>
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">CSV Format</div>
+                            <div style="font-size: 0.75rem; color: var(--neutral-400);">Spreadsheet-friendly, easy to analyze</div>
+                        </div>
+                    </div>
+                </button>
+                
+                <button onclick="exportAs('txt')" style="padding: 1rem; background: var(--neutral-800); border: 1px solid var(--neutral-700); border-radius: 0.5rem; color: var(--neutral-100); cursor: pointer; text-align: left; transition: all 0.2s;" onmouseover="this.style.borderColor='var(--cyan-500)'" onmouseout="this.style.borderColor='var(--neutral-700)'">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width:24px;height:24px;color:var(--cyan-400);"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">Text Report</div>
+                            <div style="font-size: 0.75rem; color: var(--neutral-400);">Human-readable formatted report</div>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--neutral-900); border: 1px solid var(--neutral-700); border-radius: 0.75rem; max-width: 600px; max-height: 80vh; overflow-y: auto; padding: 2rem; position: relative;">
+            <button onclick="closeHelp()" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--neutral-400); font-size: 1.5rem; cursor: pointer; padding: 0.5rem;">&times;</button>
+            <h2 style="color: var(--cyan-400); margin-bottom: 1rem;">Help & Documentation</h2>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="color: var(--purple-400); margin-bottom: 0.5rem;">Simple Mode</h3>
+                <p style="color: var(--neutral-300); line-height: 1.6; font-size: 0.875rem;">
+                    Paste your logs directly and get instant, beginner-friendly analysis with risk scores, threats, and actionable fixes. Perfect for quick assessments.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="color: var(--purple-400); margin-bottom: 0.5rem;">Standard Analysis</h3>
+                <p style="color: var(--neutral-300); line-height: 1.6; font-size: 0.875rem;">
+                    Upload log files for comprehensive pattern-based threat detection. Includes CVSS scoring, IP reputation analysis, and detailed parsing statistics. No API keys required.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="color: var(--purple-400); margin-bottom: 0.5rem;">AI-Powered Analysis</h3>
+                <p style="color: var(--neutral-300); line-height: 1.6; font-size: 0.875rem;">
+                    Leverage LLMs for advanced threat intelligence, contextual analysis, and natural language explanations. Supports Groq (free) and Gemini. Ideal for complex investigations.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="color: var(--purple-400); margin-bottom: 0.5rem;">LLM Providers</h3>
+                <p style="color: var(--neutral-300); line-height: 1.6; font-size: 0.875rem;">
+                    <strong>Currently Configured:</strong><br>
+                    • Groq (Llama 3.3) ✓<br>
+                    • Gemini (Google) ✓<br><br>
+                    Providers are configured in the <code style="background: var(--neutral-800); padding: 0.125rem 0.25rem; border-radius: 0.25rem;">.env</code> file. Unavailable providers are greyed out in the dropdown.
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <h3 style="color: var(--purple-400); margin-bottom: 0.5rem;">Export Reports</h3>
+                <p style="color: var(--neutral-300); line-height: 1.6; font-size: 0.875rem;">
+                    Click the Export button to download your analysis results as JSON. Available in all analysis modes after completing an analysis.
+                </p>
+            </div>
+            
+            <div style="padding: 1rem; background: rgba(34, 211, 238, 0.1); border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 0.5rem;">
+                <p style="color: var(--cyan-400); font-size: 0.875rem; margin: 0;">
+                    <strong>Tip:</strong> Start with Simple Mode for quick checks, use Standard Analysis for routine monitoring, and leverage AI Analysis for complex security investigations.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Footer -->
+    <footer class="global-footer">
+        <div class="footer-content">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="footer-logo">
+                        <div class="logr-mark"><svg viewBox="0 0 28 28" fill="none"><rect x="1" y="1" width="26" height="26" rx="4.5" stroke="#fff" stroke-width="0.75" opacity="0.2"/><circle cx="5.5" cy="4.5" r="1" fill="#fff" opacity="0.45"/><circle cx="9" cy="4.5" r="1" fill="#fff" opacity="0.3"/><circle cx="12.5" cy="4.5" r="1" fill="#fff" opacity="0.18"/><line x1="1" y1="8" x2="27" y2="8" stroke="#fff" stroke-width="0.5" opacity="0.12"/><path d="M4 12l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/><path d="M4 17.5l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"/><path d="M4 23l1.8 1.4-1.8 1.4" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.18"/><path d="M9 13.25h14.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.8"/><path d="M9 18.75h10.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.45"/><path d="M9 24.25h7" stroke="#fff" stroke-width="1.5" stroke-linecap="round" opacity="0.25"/><rect x="17" y="23.5" width="2.5" height="1.5" rx="0.75" fill="#fff" opacity="0.85"/></svg></div>
+                        Logr
+                    </div>
+                    <p class="footer-description">
+                        Advanced security log analysis platform powered by AI and traditional threat detection. 
+                        Protecting your infrastructure with real-time threat intelligence and comprehensive reporting.
+                    </p>
+                </div>
+
+                <div class="footer-social">
+                    <h4>Connect With Me</h4>
+                        <a href="https://github.com/cer04" target="_blank" rel="noopener noreferrer" class="social-link">
+                            <svg fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <div class="footer-copyright">
+                    © 2026 Logr. All rights reserved. | Developed by <strong>Laith Qaisi</strong>
+                </div>
+                <div class="footer-trademark">
+                    Logr™ is a trademark. Unauthorized use is prohibited.
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/dompurify.min.js"></script>
+    <script>
+        // Security helper: sanitize untrusted HTML before assigning to innerHTML.
+        // Uses the vendored DOMPurify library (Cure53) as the single trusted sink.
+        function setSafeHtml(element, html) {
+            element.innerHTML = DOMPurify.sanitize(html);
+        }
+
+        // Security helper: escape untrusted values before inserting into the DOM.
+        // All server, LLM, and log-derived data must pass through this function.
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Page Navigation
+        const allPages = ['landing-page', 'simple-mode-page', 'advanced-mode-page', 'ai-dashboard-page', 'standard-analysis-page', 'history-page'];
+        
+        function hideAllPages() {
+            allPages.forEach(id => document.getElementById(id).style.display = 'none');
+        }
+
+        function showLandingPage() {
+            hideAllPages();
+            document.getElementById('landing-page').style.display = 'flex';
+        }
+
+        function showSimpleMode() {
+            hideAllPages();
+            document.getElementById('simple-mode-page').style.display = 'flex';
+        }
+
+        function showAdvancedMode() {
+            hideAllPages();
+            document.getElementById('advanced-mode-page').style.display = 'flex';
+        }
+
+        function showAIDashboard() {
+            hideAllPages();
+            document.getElementById('ai-dashboard-page').style.display = 'flex';
+        }
+
+        function showStandardAnalysis() {
+            hideAllPages();
+            document.getElementById('standard-analysis-page').style.display = 'flex';
+        }
+
+        function showHistoryPage() {
+            hideAllPages();
+            document.getElementById('history-page').style.display = 'flex';
+            renderHistory();
+        }
+
+        // Navigation Panel
+        function toggleNav() {
+            const panel = document.getElementById('nav-panel');
+            const overlay = document.getElementById('nav-overlay');
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) { closeNav(); } else { openNav(); }
+        }
+        function openNav() {
+            document.getElementById('nav-panel').classList.add('open');
+            document.getElementById('nav-overlay').classList.add('open');
+            updateNavBadge();
+        }
+        function closeNav() {
+            document.getElementById('nav-panel').classList.remove('open');
+            document.getElementById('nav-overlay').classList.remove('open');
+        }
+
+        // Simple Mode Functions
+        function updateSimpleAnalyzeButton() {
+            const textarea = document.getElementById('simple-logs-textarea');
+            const button = document.getElementById('simple-analyze-btn');
+            button.disabled = textarea.value.trim().length === 0;
+        }
+
+        function loadExampleLogs() {
+            const exampleLogs = `192.168.1.100 - - [15/Jan/2024:10:23:45 +0000] "GET /admin/config.php HTTP/1.1" 404 512 "-" "Mozilla/5.0"
+192.168.1.101 - - [15/Jan/2024:10:24:12 +0000] "POST /login.php HTTP/1.1" 200 1024 "-" "curl/7.68.0"
+10.0.0.50 - - [15/Jan/2024:10:25:33 +0000] "GET /../../../etc/passwd HTTP/1.1" 403 256 "-" "Nikto/2.1.6"`;
+            
+            document.getElementById('simple-logs-textarea').value = exampleLogs;
+            updateSimpleAnalyzeButton();
+        }
+
+        async function analyzeSimpleLogs() {
+            const logs = document.getElementById('simple-logs-textarea').value;
+            
+            // Show loading state
+            document.getElementById('simple-loading').style.display = 'block';
+            document.getElementById('simple-results').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/explain-logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ logs: logs })
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading, show results
+                document.getElementById('simple-loading').style.display = 'none';
+                document.getElementById('simple-results').style.display = 'block';
+                
+                // Update results
+                document.getElementById('summary-content').textContent = data.summary || 'Analysis complete';
+                
+                // Update risk score
+                const riskScore = data.risk_score || 0;
+                const riskDisplay = document.getElementById('risk-score-display');
+                let riskLevel = 'Low Risk';
+                let riskColor = 'var(--green-400)';
+                
+                if (riskScore >= 7) {
+                    riskLevel = 'Critical Risk';
+                    riskColor = 'var(--red-400)';
+                } else if (riskScore >= 4) {
+                    riskLevel = 'Medium Risk';
+                    riskColor = 'var(--orange-400)';
+                }
+                
+                setSafeHtml(riskDisplay, `
+                    <div style="font-size: 2rem; font-weight: 600; color: ${riskColor}; line-height: 1;">${riskScore.toFixed(1)}</div>
+                    <div style="color: #737373; margin-top: 0.375rem; font-size: 0.75rem;">${riskLevel}</div>
+                `);
+                
+                // Update threats - backend returns array of {type, description, severity}
+                const threatsContent = document.getElementById('threats-content');
+                if (data.threats && data.threats.length > 0) {
+                    setSafeHtml(threatsContent, data.threats.map(t => `
+                        <div style="padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;"><span style="font-weight: 500; color: #e5e5e5; font-size: 0.8125rem;">${escapeHtml(t.type)}</span> <span style="font-size: 0.6875rem; color: #737373;">${escapeHtml(t.severity)}</span></div>
+                            <div style="color: #737373; font-size: 0.8125rem; line-height: 1.5;">${escapeHtml(t.description)}</div>
+                        </div>
+                    `).join(''));
+                } else {
+                    threatsContent.innerHTML = '<div style="text-align: center; color: #525252; padding: 2rem; font-size: 0.8125rem;">No threats detected</div>';
+                }
+                
+                // Update recommendations (fixes) - backend returns array of {title, description, command}
+                const recsContent = document.getElementById('recommendations-content');
+                if (data.fixes && data.fixes.length > 0) {
+                    setSafeHtml(recsContent, data.fixes.map(f => `
+                        <div style="padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="font-weight: 500; color: #e5e5e5; margin-bottom: 0.25rem; font-size: 0.8125rem;">${escapeHtml(f.title)}</div>
+                            <div style="color: #737373; font-size: 0.8125rem; margin-bottom: 0.375rem; line-height: 1.5;">${escapeHtml(f.description)}</div>
+                            ${f.command ? `<code style="display: block; background: #0e0e0e; padding: 0.5rem 0.625rem; border-radius: 4px; font-size: 0.75rem; color: #a3a3a3; font-family: 'JetBrains Mono', monospace; border: 1px solid #1e1e1e;">${escapeHtml(f.command)}</code>` : ''}
+                        </div>
+                    `).join(''));
+                } else {
+                    recsContent.innerHTML = '<div style="text-align: center; color: #525252; padding: 2rem; font-size: 0.8125rem;">No actions needed</div>';
+                }
+
+                // Save to session history
+                window.simpleAnalysisData = data;
+                saveToHistory('simple', data);
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                document.getElementById('simple-loading').style.display = 'none';
+                alert('Error analyzing logs. Please try again.');
+            }
+        }
+
+        // Advanced Mode Functions
+        function launchStandardAnalysis() {
+            showStandardAnalysis();
+        }
+
+        function launchAIAnalysis() {
+            showAIDashboard();
+        }
+
+        // Standard Analysis Functions
+        async function handleStandardFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Show loading
+            document.getElementById('standard-loading').style.display = 'block';
+            document.getElementById('standard-results').style.display = 'none';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Check for errors
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    document.getElementById('standard-loading').style.display = 'none';
+                    return;
+                }
+                
+                // Hide loading, show results
+                document.getElementById('standard-loading').style.display = 'none';
+                document.getElementById('standard-results').style.display = 'block';
+                
+                // Store data for export
+                window.standardAnalysisData = data;
+                
+                // Format the standard analysis results
+                let summaryHTML = `
+                    <div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Overview</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Events</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #e5e5e5;">${data.parsing_info.total_lines.toLocaleString()}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Threats</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: var(--red-400);">${data.risk_assessment.total_threats}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Risk</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: var(--orange-400);">${escapeHtml(data.risk_assessment.level)}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">CVSS</div>
+                                <div style="font-size: 1.5rem; font-weight: 600; color: #e5e5e5;">${data.risk_assessment.cvss_aggregate_score.toFixed(1)}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #1e1e1e; font-size: 0.8125rem; color: #737373; line-height: 1.5;">
+                            ${escapeHtml(data.risk_assessment.description)}
+                        </div>
+                    </div>
+                `;
+                
+                // Threat Statistics
+                if (data.threat_statistics && data.threat_statistics.cvss_scores && data.threat_statistics.cvss_scores.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Threats</div>`;
+                    
+                    data.threat_statistics.cvss_scores.forEach((threat, i) => {
+                        const severityColor = threat.severity === 'CRITICAL' ? 'var(--red-400)' :
+                                            threat.severity === 'HIGH' ? 'var(--orange-400)' :
+                                            threat.severity === 'MEDIUM' ? 'var(--yellow-400)' : 'var(--green-400)';
+                        
+                        summaryHTML += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.625rem;">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: ${severityColor}; flex-shrink: 0;"></span>
+                                <span style="font-weight: 500; color: #e5e5e5; font-size: 0.8125rem;">${escapeHtml(threat.threat_type)}</span>
+                            </div>
+                            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #737373;">
+                                <span>${escapeHtml(threat.severity)}</span>
+                                <span>CVSS ${threat.base_score.toFixed(1)}</span>
+                            </div>
+                        </div>`;
+                    });
+                    
+                    summaryHTML += `</div>`;
+                }
+                
+                // High Risk IPs
+                if (data.ip_analysis && data.ip_analysis.high_risk_ips && data.ip_analysis.high_risk_ips.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">High Risk IPs</div>
+                        <div style="display: flex; flex-direction: column;">`;
+                    
+                    data.ip_analysis.high_risk_ips.slice(0, 10).forEach(ip => {
+                        const location = [ip.city, ip.country].filter(Boolean).join(', ') || 'Unknown';
+                        const vpnBadge = ip.is_vpn ? '<span style="color: var(--red-400); font-size: 0.6875rem; margin-left: 0.375rem;">VPN</span>' : '';
+                        summaryHTML += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-family: 'JetBrains Mono', monospace; color: #e5e5e5; font-size: 0.8125rem;">${escapeHtml(ip.ip)}</span>${vpnBadge}
+                                <span style="font-size: 0.6875rem; color: #525252;">${escapeHtml(location)}</span>
+                            </div>
+                            <span style="color: #737373; font-size: 0.75rem;">${escapeHtml(ip.count)}</span>
+                        </div>`;
+                    });
+                    
+                    summaryHTML += `</div></div>`;
+                }
+                
+                // Parsing Info
+                summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem;">
+                    <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Parsing</div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Parsed</div>
+                            <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${data.parsing_info.parsed_lines}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Skipped</div>
+                            <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${data.parsing_info.skipped_lines}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Success</div>
+                            <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${((data.parsing_info.parsed_lines / data.parsing_info.total_lines) * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                </div>`;
+                
+                setSafeHtml(document.getElementById('standard-summary-content'), summaryHTML);
+
+                // Save to session history
+                saveToHistory('standard', data);
+                
+            } catch (error) {
+                console.error('Standard analysis error:', error);
+                console.error('Error details:', error.message, error.stack);
+                document.getElementById('standard-loading').style.display = 'none';
+                alert('Error performing standard analysis: ' + error.message + '\n\nCheck browser console for details.');
+            }
+        }
+
+        // AI Dashboard Functions
+        function handleProviderChange() {
+            const provider = document.getElementById('llm-provider-dropdown').value;
+            console.log('Selected provider:', provider);
+            // Store selection for API calls
+            localStorage.setItem('selectedProvider', provider);
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // Show loading
+            document.getElementById('ai-loading').style.display = 'block';
+            document.getElementById('ai-results').style.display = 'none';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/analyze-with-llm', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading, show results
+                document.getElementById('ai-loading').style.display = 'none';
+                document.getElementById('ai-results').style.display = 'block';
+                
+                // Store data for export
+                window.aiAnalysisData = data;
+                
+                // Format comprehensive AI analysis results like the old version
+                const report = data.report || data.ai_report || {};
+                
+                let summaryHTML = `
+                    <div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Summary</div>
+                        <p style="color: #a3a3a3; line-height: 1.6; font-size: 0.875rem; margin-bottom: 0.75rem;">${escapeHtml(report.summary || 'Analysis complete')}</p>
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="color: #737373; font-size: 0.75rem;">Threat Level</span> <span style="color: var(--red-400); font-weight: 600; font-size: 0.875rem;">${escapeHtml(report.threat_level || 'Unknown')}</span></div>
+                            <div style="font-size: 0.75rem; color: #525252;">${data.total_logs || 0} logs · ${data.suspicious_logs || 0} suspicious</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Key Findings Section (from attack_chains or create from IOCs)
+                const findings = report.attack_chains || [];
+                if (findings.length > 0 || (report.indicators_of_compromise && report.indicators_of_compromise.length > 0)) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Key Findings</div>`;
+                    
+                    if (findings.length > 0) {
+                        findings.forEach((finding, i) => {
+                            summaryHTML += `<div style="padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e; font-size: 0.8125rem; color: #e5e5e5; line-height: 1.5;">
+                                ${i + 1}. ${escapeHtml(finding)}
+                            </div>`;
+                        });
+                    } else if (report.indicators_of_compromise) {
+                        report.indicators_of_compromise.forEach((ioc, i) => {
+                            summaryHTML += `<div style="padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e; font-size: 0.8125rem; color: #a3a3a3; line-height: 1.5;">
+                                ${i + 1}. ${escapeHtml(ioc)}
+                            </div>`;
+                        });
+                    }
+                    
+                    summaryHTML += `</div>`;
+                }
+                
+                // MITRE ATT&CK Techniques
+                if (report.mitre_attack_techniques && report.mitre_attack_techniques.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">MITRE ATT&CK</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.375rem;">`;
+                    
+                    report.mitre_attack_techniques.forEach(tech => {
+                        summaryHTML += `<span style="padding: 0.25rem 0.5rem; background: #191919; border: 1px solid #1e1e1e; border-radius: 4px; color: #a3a3a3; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace;">${escapeHtml(tech)}</span>`;
+                    });
+                    
+                    summaryHTML += `</div></div>`;
+                }
+                
+                // Threat Statistics (from basic analysis data)
+                if (data.threat_statistics && data.threat_statistics.cvss_scores && data.threat_statistics.cvss_scores.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Threats</div>`;
+                    
+                    data.threat_statistics.cvss_scores.forEach((threat, i) => {
+                        const severityColor = threat.severity === 'CRITICAL' ? 'var(--red-400)' :
+                                            threat.severity === 'HIGH' ? 'var(--orange-400)' :
+                                            threat.severity === 'MEDIUM' ? 'var(--yellow-400)' : 'var(--green-400)';
+                        
+                        summaryHTML += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.625rem;">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: ${severityColor}; flex-shrink: 0;"></span>
+                                <span style="font-weight: 500; color: #e5e5e5; font-size: 0.8125rem;">${escapeHtml(threat.threat_type)}</span>
+                            </div>
+                            <div style="display: flex; gap: 1rem; font-size: 0.75rem; color: #737373;">
+                                <span>${escapeHtml(threat.severity)}</span>
+                                <span>CVSS ${threat.base_score.toFixed(1)}</span>
+                            </div>
+                        </div>`;
+                    });
+                    
+                    summaryHTML += `</div>`;
+                }
+                
+                // High Risk IPs (from basic analysis data)
+                if (data.ip_analysis && data.ip_analysis.high_risk_ips && data.ip_analysis.high_risk_ips.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">High Risk IPs</div>
+                        <div style="display: flex; flex-direction: column;">`;
+                    
+                    data.ip_analysis.high_risk_ips.slice(0, 10).forEach(ip => {
+                        const location = [ip.city, ip.country].filter(Boolean).join(', ') || 'Unknown';
+                        const vpnBadge = ip.is_vpn ? '<span style="color: var(--red-400); font-size: 0.6875rem; margin-left: 0.375rem;">VPN</span>' : '';
+                        summaryHTML += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid #1e1e1e;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-family: 'JetBrains Mono', monospace; color: #e5e5e5; font-size: 0.8125rem;">${escapeHtml(ip.ip)}</span>${vpnBadge}
+                                <span style="font-size: 0.6875rem; color: #525252;">${escapeHtml(location)}</span>
+                            </div>
+                            <span style="color: #737373; font-size: 0.75rem;">${escapeHtml(ip.count)}</span>
+                        </div>`;
+                    });
+                    
+                    summaryHTML += `</div></div>`;
+                }
+                
+                // Recommendations Section
+                if (report.recommendations && report.recommendations.length > 0) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Recommendations</div>
+                        <ul style="color: #a3a3a3; line-height: 1.6; padding-left: 1rem; margin: 0; font-size: 0.8125rem;">`;
+                    
+                    report.recommendations.forEach(rec => {
+                        summaryHTML += `<li style="margin-bottom: 0.375rem;">${escapeHtml(rec)}</li>`;
+                    });
+                    
+                    summaryHTML += `</ul></div>`;
+                }
+                
+                // Parsing Statistics (from basic analysis data)
+                if (data.parsing_info) {
+                    summaryHTML += `<div style="background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.6875rem; color: #525252; margin-bottom: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;">Parsing</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Parsed</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${data.parsing_info.parsed_lines}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Skipped</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${data.parsing_info.skipped_lines}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: #737373; margin-bottom: 0.25rem;">Success</div>
+                                <div style="font-size: 1.25rem; font-weight: 600; color: #e5e5e5;">${((data.parsing_info.parsed_lines / data.parsing_info.total_lines) * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                // Confidence Score
+                if (report.confidence_score) {
+                    summaryHTML += `<div style="padding: 0.75rem 1rem; background: #151515; border: 1px solid #1e1e1e; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                        <span style="color: #737373; font-size: 0.75rem;">Confidence</span>
+                        <span style="color: #e5e5e5; font-weight: 600; font-size: 0.875rem;">${(report.confidence_score * 100).toFixed(1)}%</span>
+                    </div>`;
+                }
+                
+                setSafeHtml(document.getElementById('ai-summary-content'), summaryHTML);
+
+                // Save to session history
+                saveToHistory('ai', data);
+                
+            } catch (error) {
+                console.error('AI analysis error:', error);
+                document.getElementById('ai-loading').style.display = 'none';
+                alert('Error performing AI analysis. Please try again.');
+            }
+        }
+
+        // Help Modal Functions
+        function showHelp() {
+            document.getElementById('help-modal').style.display = 'flex';
+        }
+
+        function closeHelp() {
+            document.getElementById('help-modal').style.display = 'none';
+        }
+
+        // Export Modal Functions
+        let currentExportMode = null;
+        
+        function showExportModal(mode) {
+            const dataMap = {
+                'simple': window.simpleAnalysisData,
+                'standard': window.standardAnalysisData,
+                'ai': window.aiAnalysisData
+            };
+            
+            if (!dataMap[mode]) {
+                alert('No analysis data available. Please run an analysis first.');
+                return;
+            }
+            
+            currentExportMode = mode;
+            document.getElementById('export-modal').style.display = 'flex';
+        }
+        
+        function closeExportModal() {
+            document.getElementById('export-modal').style.display = 'none';
+            currentExportMode = null;
+        }
+        
+        function exportAs(format) {
+            if (!currentExportMode) return;
+            
+            const dataMap = {
+                'simple': window.simpleAnalysisData,
+                'standard': window.standardAnalysisData,
+                'ai': window.aiAnalysisData
+            };
+            
+            const data = dataMap[currentExportMode];
+            const timestamp = new Date().toISOString().split('T')[0];
+            const filename = `${currentExportMode}-analysis-${timestamp}`;
+            
+            if (format === 'json') {
+                exportJSON(data, filename);
+            } else if (format === 'csv') {
+                exportCSV(data, filename, currentExportMode);
+            } else if (format === 'txt') {
+                exportTXT(data, filename, currentExportMode);
+            }
+            
+            closeExportModal();
+        }
+        
+        function exportJSON(data, filename) {
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            downloadFile(dataBlob, `${filename}.json`);
+        }
+        
+        function exportCSV(data, filename, mode) {
+            let csv = '';
+            
+            if (mode === 'simple') {
+                csv = 'Summary,Risk Score\n';
+                csv += `"${(data.summary || '').replace(/"/g, '""')}",${data.risk_score || 0}\n\n`;
+                csv += 'Threat Type,Description,Severity\n';
+                (data.threats || []).forEach(t => {
+                    csv += `"${t.type}","${(t.description || '').replace(/"/g, '""')}","${t.severity}"\n`;
+                });
+            } else if (mode === 'standard') {
+                csv = 'Metric,Value\n';
+                csv += `Total Lines,${data.parsing_info?.total_lines || 0}\n`;
+                csv += `Threats Detected,${data.risk_assessment?.total_threats || 0}\n`;
+                csv += `Risk Level,${data.risk_assessment?.level || 'Unknown'}\n`;
+                csv += `CVSS Score,${data.risk_assessment?.cvss_aggregate_score || 0}\n\n`;
+                csv += 'Threat Type,Severity,CVSS Score,Count\n';
+                (data.threat_statistics?.cvss_scores || []).forEach(t => {
+                    csv += `"${t.threat_type}","${t.severity}",${t.base_score},${t.count || 1}\n`;
+                });
+            } else if (mode === 'ai') {
+                const report = data.report || data.ai_report || {};
+                csv = 'Summary,Threat Level,Confidence Score\n';
+                csv += `"${(report.summary || '').replace(/"/g, '""')}","${report.threat_level || 'Unknown'}",${report.confidence_score || 0}\n\n`;
+                csv += 'Indicators of Compromise\n';
+                (report.indicators_of_compromise || []).forEach(ioc => {
+                    csv += `"${ioc.replace(/"/g, '""')}"\n`;
+                });
+            }
+            
+            const dataBlob = new Blob([csv], { type: 'text/csv' });
+            downloadFile(dataBlob, `${filename}.csv`);
+        }
+        
+        function exportTXT(data, filename, mode) {
+            let txt = `Security Log Analysis Report\n`;
+            txt += `Generated: ${new Date().toLocaleString()}\n`;
+            txt += `Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)} Analysis\n`;
+            txt += `${'='.repeat(60)}\n\n`;
+            
+            if (mode === 'simple') {
+                txt += `SUMMARY\n${'-'.repeat(60)}\n${data.summary || 'N/A'}\n\n`;
+                txt += `RISK SCORE: ${data.risk_score || 0}/10\n\n`;
+                txt += `DETECTED THREATS\n${'-'.repeat(60)}\n`;
+                (data.threats || []).forEach((t, i) => {
+                    txt += `${i + 1}. ${t.type} [${t.severity}]\n`;
+                    txt += `   ${t.description}\n\n`;
+                });
+                txt += `\nRECOMMENDED FIXES\n${'-'.repeat(60)}\n`;
+                (data.fixes || []).forEach((f, i) => {
+                    txt += `${i + 1}. ${f.title}\n`;
+                    txt += `   ${f.description}\n`;
+                    if (f.command) txt += `   Command: ${f.command}\n`;
+                    txt += `\n`;
+                });
+            } else if (mode === 'standard') {
+                txt += `ANALYSIS OVERVIEW\n${'-'.repeat(60)}\n`;
+                txt += `Total Events: ${data.parsing_info?.total_lines || 0}\n`;
+                txt += `Threats Detected: ${data.risk_assessment?.total_threats || 0}\n`;
+                txt += `Risk Level: ${data.risk_assessment?.level || 'Unknown'}\n`;
+                txt += `CVSS Score: ${data.risk_assessment?.cvss_aggregate_score || 0}\n\n`;
+                txt += `DETECTED THREATS\n${'-'.repeat(60)}\n`;
+                (data.threat_statistics?.cvss_scores || []).forEach((t, i) => {
+                    txt += `${i + 1}. ${t.threat_type} [${t.severity}]\n`;
+                    txt += `   CVSS: ${t.base_score} | Count: ${t.count || 1}\n\n`;
+                });
+            } else if (mode === 'ai') {
+                const report = data.report || data.ai_report || {};
+                txt += `EXECUTIVE SUMMARY\n${'-'.repeat(60)}\n${report.summary || 'N/A'}\n\n`;
+                txt += `Threat Level: ${report.threat_level || 'Unknown'}\n`;
+                txt += `Confidence Score: ${((report.confidence_score || 0) * 100).toFixed(1)}%\n\n`;
+                txt += `INDICATORS OF COMPROMISE\n${'-'.repeat(60)}\n`;
+                (report.indicators_of_compromise || []).forEach((ioc, i) => {
+                    txt += `${i + 1}. ${ioc}\n`;
+                });
+                txt += `\nRECOMMENDATIONS\n${'-'.repeat(60)}\n`;
+                (report.recommendations || []).forEach((rec, i) => {
+                    txt += `${i + 1}. ${rec}\n`;
+                });
+            }
+            
+            const dataBlob = new Blob([txt], { type: 'text/plain' });
+            downloadFile(dataBlob, `${filename}.txt`);
+        }
+        
+        function downloadFile(blob, filename) {
+            // Whitelist the filename: only safe filesystem characters are allowed.
+            const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = safeName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // ── Session History ──────────────────────────────────────
+        const HISTORY_KEY = 'logr_analysis_history';
+
+        function getHistory() {
+            try {
+                return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+            } catch { return []; }
+        }
+
+        function saveToHistory(mode, data) {
+            const history = getHistory();
+            const entry = {
+                id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                mode: mode,
+                timestamp: new Date().toISOString(),
+                data: data,
+                summary: extractSummary(mode, data)
+            };
+            history.unshift(entry);
+            if (history.length > 50) history.pop();
+            sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            updateNavBadge();
+        }
+
+        function extractSummary(mode, data) {
+            if (mode === 'simple') {
+                return {
+                    text: data.summary || 'Analysis complete',
+                    riskScore: data.risk_score || 0,
+                    threatCount: (data.threats || []).length,
+                    fixCount: (data.fixes || []).length
+                };
+            } else if (mode === 'standard') {
+                return {
+                    text: data.risk_assessment?.description || 'Standard analysis complete',
+                    totalEvents: data.parsing_info?.total_lines || 0,
+                    threatCount: data.risk_assessment?.total_threats || 0,
+                    riskLevel: data.risk_assessment?.level || 'Unknown',
+                    cvss: data.risk_assessment?.cvss_aggregate_score || 0
+                };
+            } else if (mode === 'ai') {
+                const report = data.report || data.ai_report || {};
+                return {
+                    text: report.summary || 'AI analysis complete',
+                    threatLevel: report.threat_level || 'Unknown',
+                    totalLogs: data.total_logs || 0,
+                    suspiciousLogs: data.suspicious_logs || 0,
+                    confidence: report.confidence_score || 0
+                };
+            }
+            return { text: 'Analysis complete' };
+        }
+
+        function clearHistory() {
+            if (!confirm('Clear all analysis history for this session?')) return;
+            sessionStorage.removeItem(HISTORY_KEY);
+            renderHistory();
+            updateNavBadge();
+        }
+
+        function deleteHistoryEntry(entryId) {
+            const history = getHistory().filter(e => e.id !== entryId);
+            sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            renderHistory();
+            updateNavBadge();
+        }
+
+        function updateNavBadge() {
+            const count = getHistory().length;
+            const badge = document.getElementById('nav-history-badge');
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'inline-block' : 'none';
+            }
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list-container');
+            const history = getHistory();
+            const countLabel = document.getElementById('history-count-label');
+            const clearBtn = document.getElementById('clear-history-btn');
+
+            countLabel.textContent = history.length > 0 ? `(${history.length})` : '';
+            clearBtn.style.display = history.length > 0 ? 'inline-block' : 'none';
+
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="history-empty">
+                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <h2>No Analysis History</h2>
+                        <p>Completed analyses will appear here during your current session. History is cleared when you close the browser.</p>
+                    </div>`;
+                return;
+            }
+
+            const modeLabels = { simple: 'Simple', standard: 'Standard', ai: 'AI-Powered' };
+
+            let html = '<div class="history-list">';
+            history.forEach(entry => {
+                const time = new Date(entry.timestamp);
+                const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = time.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                const s = entry.summary || {};
+
+                let statsHTML = '';
+                if (entry.mode === 'simple') {
+                    statsHTML = `<span>Risk: ${(s.riskScore || 0).toFixed(1)}/10</span><span>Threats: ${s.threatCount || 0}</span><span>Fixes: ${s.fixCount || 0}</span>`;
+                } else if (entry.mode === 'standard') {
+                    statsHTML = `<span>Events: ${(s.totalEvents || 0).toLocaleString()}</span><span>Threats: ${s.threatCount || 0}</span><span>CVSS: ${(s.cvss || 0).toFixed(1)}</span>`;
+                } else if (entry.mode === 'ai') {
+                    statsHTML = `<span>Level: ${escapeHTML(s.threatLevel || '—')}</span><span>Logs: ${s.totalLogs || 0}</span><span>Suspicious: ${s.suspiciousLogs || 0}</span>`;
+                }
+
+                html += `
+                    <div class="history-card" onclick="viewHistoryDetail('${entry.id}')">
+                        <div class="history-card-top">
+                            <div class="history-card-left">
+                                <span class="history-mode-badge ${entry.mode}">${modeLabels[entry.mode] || entry.mode}</span>
+                            </div>
+                            <span class="history-card-time">${dateStr} ${timeStr}</span>
+                        </div>
+                        <div class="history-card-summary">${escapeHTML(s.text || 'Analysis complete')}</div>
+                        <div class="history-card-stats">${statsHTML}</div>
+                        <div class="history-card-actions" onclick="event.stopPropagation();">
+                            <button onclick="viewHistoryDetail('${entry.id}')">View Details</button>
+                            <button onclick="reExportEntry('${entry.id}')">Export JSON</button>
+                            <button class="delete-entry" onclick="deleteHistoryEntry('${entry.id}')">Delete</button>
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+            setSafeHtml(container, html);
+        }
+
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function viewHistoryDetail(entryId) {
+            const entry = getHistory().find(e => e.id === entryId);
+            if (!entry) return;
+
+            const modal = document.getElementById('history-detail-modal');
+            const badge = document.getElementById('detail-mode-badge');
+            const ts = document.getElementById('detail-timestamp');
+            const body = document.getElementById('detail-body');
+
+            const modeLabels = { simple: 'Simple', standard: 'Standard', ai: 'AI-Powered' };
+            badge.className = 'history-mode-badge ' + entry.mode;
+            badge.textContent = modeLabels[entry.mode] || entry.mode;
+            ts.textContent = new Date(entry.timestamp).toLocaleString();
+
+            setSafeHtml(body, buildDetailHTML(entry.mode, entry.data));
+            modal.style.display = 'flex';
+        }
+
+        function closeHistoryDetail() {
+            document.getElementById('history-detail-modal').style.display = 'none';
+        }
+
+        function buildDetailHTML(mode, data) {
+            if (mode === 'simple') {
+                let h = `<div style="background:var(--neutral-800);border-radius:0.5rem;padding:1rem;margin-bottom:1rem;">
+                    <h3 style="color:var(--cyan-400);margin-bottom:0.5rem;font-size:0.9375rem;">Summary</h3>
+                    <p style="color:var(--neutral-300);line-height:1.6;font-size:0.875rem;">${escapeHTML(data.summary || 'Analysis complete')}</p>
+                    <div style="margin-top:0.75rem;font-size:1.5rem;font-weight:600;color:var(--orange-400);">Risk Score: ${(data.risk_score || 0).toFixed(1)}/10</div>
+                </div>`;
+                if (data.threats && data.threats.length > 0) {
+                    h += `<h3 style="color:var(--red-400);margin-bottom:0.5rem;font-size:0.9375rem;">Threats (${data.threats.length})</h3>`;
+                    data.threats.forEach(t => {
+                        h += `<div style="padding:0.75rem;background:var(--neutral-800);border-left:3px solid var(--red-400);border-radius:0.25rem;margin-bottom:0.5rem;">
+                            <div style="font-weight:500;color:var(--red-400);margin-bottom:0.25rem;">${escapeHTML(t.type)} — ${escapeHTML(t.severity)}</div>
+                            <div style="color:var(--neutral-400);font-size:0.8125rem;">${escapeHTML(t.description)}</div>
+                        </div>`;
+                    });
+                }
+                if (data.fixes && data.fixes.length > 0) {
+                    h += `<h3 style="color:var(--green-400);margin:1rem 0 0.5rem;font-size:0.9375rem;">Fixes (${data.fixes.length})</h3>`;
+                    data.fixes.forEach(f => {
+                        h += `<div style="padding:0.75rem;background:var(--neutral-800);border-left:3px solid var(--green-400);border-radius:0.25rem;margin-bottom:0.5rem;">
+                            <div style="font-weight:500;color:var(--green-400);margin-bottom:0.25rem;">${escapeHTML(f.title)}</div>
+                            <div style="color:var(--neutral-400);font-size:0.8125rem;">${escapeHTML(f.description)}</div>
+                            ${f.command ? `<code style="display:block;margin-top:0.375rem;background:var(--neutral-900);padding:0.375rem;border-radius:4px;font-size:0.75rem;color:var(--cyan-400);">${escapeHTML(f.command)}</code>` : ''}
+                        </div>`;
+                    });
+                }
+                return h;
+            } else if (mode === 'standard') {
+                let h = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;margin-bottom:1rem;">
+                    <div style="padding:0.75rem;background:var(--neutral-800);border-radius:0.375rem;">
+                        <div style="font-size:0.8125rem;color:var(--neutral-400);">Total Events</div>
+                        <div style="font-size:1.375rem;font-weight:600;color:var(--cyan-400);">${(data.parsing_info?.total_lines || 0).toLocaleString()}</div>
+                    </div>
+                    <div style="padding:0.75rem;background:var(--neutral-800);border-radius:0.375rem;">
+                        <div style="font-size:0.8125rem;color:var(--neutral-400);">Threats</div>
+                        <div style="font-size:1.375rem;font-weight:600;color:var(--red-400);">${data.risk_assessment?.total_threats || 0}</div>
+                    </div>
+                    <div style="padding:0.75rem;background:var(--neutral-800);border-radius:0.375rem;">
+                        <div style="font-size:0.8125rem;color:var(--neutral-400);">Risk Level</div>
+                        <div style="font-size:1.375rem;font-weight:600;color:var(--orange-400);">${escapeHTML(data.risk_assessment?.level || 'Unknown')}</div>
+                    </div>
+                    <div style="padding:0.75rem;background:var(--neutral-800);border-radius:0.375rem;">
+                        <div style="font-size:0.8125rem;color:var(--neutral-400);">CVSS</div>
+                        <div style="font-size:1.375rem;font-weight:600;color:var(--yellow-400);">${(data.risk_assessment?.cvss_aggregate_score || 0).toFixed(1)}</div>
+                    </div>
+                </div>`;
+                if (data.risk_assessment?.description) {
+                    h += `<div style="padding:0.75rem;background:var(--neutral-800);border-radius:0.375rem;margin-bottom:1rem;color:var(--neutral-300);font-size:0.875rem;">${escapeHTML(data.risk_assessment.description)}</div>`;
+                }
+                if (data.threat_statistics?.cvss_scores?.length > 0) {
+                    h += `<h3 style="color:var(--red-400);margin-bottom:0.5rem;font-size:0.9375rem;">Detected Threats</h3>`;
+                    data.threat_statistics.cvss_scores.forEach(t => {
+                        const sc = t.severity==='CRITICAL'?'var(--red-400)':t.severity==='HIGH'?'var(--orange-400)':t.severity==='MEDIUM'?'var(--yellow-400)':'var(--green-400)';
+                        h += `<div style="padding:0.75rem;background:var(--neutral-800);border-left:3px solid ${sc};border-radius:0.25rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;">
+                            <span style="color:var(--neutral-100);font-weight:500;">${escapeHTML(t.threat_type)}</span>
+                            <span style="font-size:0.75rem;padding:0.2rem 0.5rem;background:${sc};color:#000;border-radius:0.25rem;font-weight:600;">${escapeHTML(t.severity)}</span>
+                        </div>`;
+                    });
+                }
+                return h;
+            } else if (mode === 'ai') {
+                const report = data.report || data.ai_report || {};
+                let h = `<div style="background:var(--neutral-800);border-radius:0.5rem;padding:1rem;margin-bottom:1rem;">
+                    <h3 style="color:var(--purple-400);margin-bottom:0.5rem;font-size:0.9375rem;">Executive Summary</h3>
+                    <p style="color:var(--neutral-300);line-height:1.6;font-size:0.875rem;">${escapeHTML(report.summary || 'Analysis complete')}</p>
+                    <div style="margin-top:0.75rem;display:flex;gap:1.5rem;font-size:0.875rem;">
+                        <span style="color:var(--red-400);font-weight:600;">Threat Level: ${escapeHTML(report.threat_level || 'Unknown')}</span>
+                        <span style="color:var(--neutral-400);">Logs: ${data.total_logs || 0}</span>
+                        <span style="color:var(--neutral-400);">Suspicious: ${data.suspicious_logs || 0}</span>
+                    </div>
+                </div>`;
+                if (report.recommendations?.length > 0) {
+                    h += `<h3 style="color:var(--green-400);margin-bottom:0.5rem;font-size:0.9375rem;">Recommendations</h3><ul style="color:var(--neutral-300);padding-left:1.25rem;line-height:1.8;font-size:0.875rem;">`;
+                    report.recommendations.forEach(r => { h += `<li>${escapeHTML(r)}</li>`; });
+                    h += '</ul>';
+                }
+                if (report.mitre_attack_techniques?.length > 0) {
+                    h += `<h3 style="color:var(--cyan-400);margin:1rem 0 0.5rem;font-size:0.9375rem;">MITRE ATT&CK</h3><div style="display:flex;flex-wrap:wrap;gap:0.375rem;">`;
+                    report.mitre_attack_techniques.forEach(t => {
+                        h += `<span style="padding:0.25rem 0.625rem;background:var(--neutral-800);border:1px solid var(--cyan-500);border-radius:0.25rem;color:var(--cyan-400);font-size:0.8125rem;">${escapeHTML(t)}</span>`;
+                    });
+                    h += '</div>';
+                }
+                return h;
+            }
+            return '<p style="color:var(--neutral-400);">No details available.</p>';
+        }
+
+        function reExportEntry(entryId) {
+            const entry = getHistory().find(e => e.id === entryId);
+            if (!entry) return;
+            const dataStr = JSON.stringify(entry.data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const ts = new Date(entry.timestamp).toISOString().split('T')[0];
+            downloadFile(blob, `${entry.mode}-analysis-${ts}.json`);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            showLandingPage();
+            updateNavBadge();
+        });
+    </script>
+</body>
+</html>

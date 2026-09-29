@@ -1,0 +1,20 @@
+# Exclude documentation from language statistics
+*.md linguist-documentation
+
+# Exclude test files from language statistics
+test_*.log linguist-generated
+**/test_*.log linguist-generated
+sample_logs.txt linguist-generated
+
+# Mark shell scripts as generated (database setup scripts)
+database/*.sh linguist-generated
+
+# Ensure Rust is properly detected
+*.rs linguist-language=Rust
+
+# Mark static HTML/CSS as vendored (UI framework, not core logic)
+**/static/*.html linguist-vendored
+**/static/*.css linguist-vendored
+
+# Mark documentation HTML as documentation
+Documentation/**/*.html linguist-documentation

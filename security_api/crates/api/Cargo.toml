@@ -1,0 +1,38 @@
+[package]
+name = "security-api"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "security-api"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace crates
+security-common = { path = "../common" }
+security-analyzer-basic = { path = "../analyzer-basic" }
+security-analyzer-llm = { path = "../analyzer-llm" }
+
+# Web framework
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+uuid = { workspace = true }
+dotenv = { workspace = true }
+regex = { workspace = true }
+
+# LLM integration for Simple Mode
+rig-core = { workspace = true }
+reqwest = { workspace = true }
+
+[features]
+default = []
+basic-only = []
